@@ -1,0 +1,105 @@
+//---------//
+
+//ImagePSF=1
+FscrunchChan=4
+
+//---------//
+
+SubBandIDs=
+
+//StorePixelMatrices=1
+
+// do extra iterations with in each time step
+//IterateOverAllGains=0
+
+MaxFrequency=200
+ImageOversampling=5
+writeVisToUVFITS=1
+
+applyDIcalibration=1
+doMWArxCorrections=1
+doRFIflagging=0
+useFastPrimaryBeamModels=1
+
+CorrDumpTime=0.0
+
+CorrDumpsPerCadence=0
+NumberOfIntegrationBins=0
+NumberOfIterations=
+
+StartProcessingAt=0
+StartIntegrationAt=0
+
+// -------------------------------------------------------------------------- //
+// Need to specify extra info when not using uvfits files
+
+// in correlator mode, Base File name is used to find correlator files. 
+ReadAllFromSingleFile=
+BaseFilename=*_gpubox
+
+doRawDataCorrections=1
+
+ReadGpuboxDirect=1
+//UseCorrelatorInput=1
+UsePacketInput=0
+UseThreadedVI=1
+
+ArrayFile=array_file.txt
+ArrayNumberOfStations=128
+
+ChannelBandwidth=0.04
+NumberOfChannels=32
+
+ArrayPositionLat=-26.70331940
+ArrayPositionLong=116.67081524
+
+//time is needed to set lst, even if ObservationTimeBase is set.
+ObservationTimeBase=2456519.20083
+
+// -------------------------------------------------------------------------- //
+
+// --- observing stuff --- //
+
+ObservationFrequencyBase=167.055
+
+ObservationPointCentreHA=1.031
+ObservationPointCentreDec=-25.93
+
+ObservationImageCentreRA=
+ObservationImageCentreDec=
+
+// --- weighting stuff --- //
+
+calBaselineMin=20.0
+calShortBaselineTaper=50.0
+
+//imgLongBaselineTaper = 3000.0
+imgBaselineMin = 100.0
+
+// --- calibration stuff --- //
+
+DoCalibration=
+
+SourceCatalogueFile=catalogue_imaging.txt
+
+NumberOfCalibrators=1
+NumberOfSourcesToPeel=0
+NumberOfIonoCalibrators=0
+UpdateCalibratorAmplitudes=0
+
+// --- imaging stuff --- //
+
+// Turn on imaging
+
+//MakeImage=
+
+//FieldOfViewDegrees=5
+
+//GridDataWithMethod=2
+
+//MakeStokesSnapshots=
+//MakeWeightedSnapshots=
+
+//RegridMethod=2
+//DoRegriddingWithProjection=2048
+

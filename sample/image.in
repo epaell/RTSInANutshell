@@ -1,0 +1,31 @@
+Weighting: Natural
+FieldSize : 8.0
+nCalibrators : 1
+#
+TemplateBase: rts_
+#
+fscrunch: 1
+catextent: 20
+calcadence: 64
+imgcadence: 96
+#
+calsrcs: 30
+#
+DoAccumulate: False
+#
+# Test set for transient
+Minbaseline: 80
+MakePSF: False
+catextent: 6
+nPeel: 0
+nIonoCal: 0
+imgsrcs: 100
+UpdateCal: 0
+Weighting: Natural
+#Robustness: 0.0
+#srccat: culgoora.txt
+#
+rtsbin: rts_gpu
+ImgCat: Regenerate
+Image: 1165925976(1.6504278,-17.9501) self uvceti
+Stop
