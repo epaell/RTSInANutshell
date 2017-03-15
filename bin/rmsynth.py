@@ -192,13 +192,13 @@ def RMprocess(prefix, startPhi, stopPhi, dPhi, doclean, writeCube):
 	absFDFcube = np.abs(FDFcube)
 	if writeCube == True:
 		# write the RM cube (flux density)
-		fits.writeto('%sPI.fits' %(fprefix), absFDFcube, headRM, overwrite=True, output_verify='ignore')
+		fits.writeto('%sPI.fits' %(fprefix), absFDFcube, headRM, clobber=True, output_verify='ignore')
 		# write the RM cube (rotation angle)
-		fits.writeto('%sPIphi.fits' %(fprefix), np.angle(FDFcube), headRM, overwrite=True, output_verify='ignore')
+		fits.writeto('%sPIphi.fits' %(fprefix), np.angle(FDFcube), headRM, clobber=True, output_verify='ignore')
 	# Write the peak polarised flux derived from the RM cube
-	fits.writeto('%speak.fits' %(fprefix), datapeak, header, overwrite=True, output_verify='ignore')
+	fits.writeto('%speak.fits' %(fprefix), datapeak, header, clobber=True, output_verify='ignore')
 	# Write the RM at which the peak polarised flux occurs for each pixel in the RM cube
-	fits.writeto('%sval.fits' %(fprefix), dataval, header, overwrite=True, output_verify='ignore')
+	fits.writeto('%sval.fits' %(fprefix), dataval, header, clobber=True, output_verify='ignore')
 
 
 #-----------------------------------------------------------------------------#
