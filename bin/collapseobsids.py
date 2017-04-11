@@ -17,7 +17,7 @@ def collapse(flist, dest):
 		ihdulist = fits.open(flist[chan])
 		idata[chan, :, :] = ihdulist[0].data
 		ihdulist.close()
-	mdata = np.mean(idata, axis=0)
+	mdata = np.nanmean(idata, axis=0)
 	fits.writeto(dest, mdata, header, clobber=True)
 	hdu.close()
 
