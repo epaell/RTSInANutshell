@@ -1,0 +1,80 @@
+//---------//
+
+FscrunchChan=4
+
+//---------//
+
+SubBandIDs=
+
+StorePixelMatrices=0
+
+// do extra iterations with in each time step
+//IterateOverAllGains=0
+
+MaxFrequency=180
+ImageOversampling=3
+
+applyDIcalibration=1
+doMWArxCorrections=1
+doRFIflagging=1
+useFastPrimaryBeamModels=1
+
+CorrDumpTime=0.0
+
+CorrDumpsPerCadence=0
+NumberOfIntegrationBins=0
+NumberOfIterations=
+
+StartProcessingAt=0
+StartIntegrationAt=0
+
+// -------------------------------------------------------------------------- //
+// Need to specify extra info when not using uvfits files
+
+// in correlator mode, Base File name is used to find correlator files. 
+BaseFilename=*_gpubox
+
+doRawDataCorrections=1
+
+ReadGpuboxDirect=1
+//UseCorrelatorInput=1
+UsePacketInput=0
+UseThreadedVI=0
+
+ArrayFile=array_file.txt
+ArrayNumberOfStations=128
+
+ChannelBandwidth=0.04
+NumberOfChannels=32
+
+ArrayPositionLat=-26.70331940
+ArrayPositionLong=116.67081524
+
+//time is needed to set lst, even if ObservationTimeBase is set.
+ObservationTimeBase=2456519.20083
+
+// -------------------------------------------------------------------------- //
+
+// --- observing stuff --- //
+
+ReadAllFromSingleFile=
+
+ObservationFrequencyBase=167.055
+
+ObservationPointCentreHA=1.031
+ObservationPointCentreDec=-25.93
+
+ObservationImageCentreRA=
+ObservationImageCentreDec=
+
+// --- weighting stuff --- //
+
+calBaselineMin=20.0
+calShortBaselineTaper=50.0
+
+// --- calibration stuff --- //
+
+DoCalibration=
+
+SourceCatalogueFile=catalogue.txt
+NumberOfCalibrators=1
