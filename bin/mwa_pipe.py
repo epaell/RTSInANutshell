@@ -266,7 +266,7 @@ class MWAPipe:
 		self.make_stokes = True
 		self.remove_inst_pols = True
 
-	def _generate_RTS_input_files(self, obsid, data_path, basename, template, cal_src, ra_hrs, dec_deg, mode = None):
+	def _generate_RTS_input_files(self, obsid, data_path, basename, template, ra_hrs, dec_deg, mode = None):
 		if not (self.array == '32T' or self.array == '128T'):
 			self.logger.error("Array Parameter should be either '32T' or '128T'")
 			return
@@ -403,9 +403,14 @@ class MWAPipe:
 				new_line = line.replace(line[len('ObservationPointCentreHA='):],str(header["HA_HRS"]) + '\n')
 			if line.startswith('ObservationPointCentreDec'):
 				new_line = line.replace(line[len('ObservationPointCentreDec='):],str(header["DEC_DEGS"]) + '\n')
-			if ('SourceCatalogueFile' in line) and (cal_src == None):
-				self.logger.info("Setting catalogue file for self calibration")
-				new_line = "SourceCatalogueFile=catalogue.txt\n"
+			if 'SourceCatalogueFile' in line:
+				if mode == "calibrate":
+					self.logger.info("Setting catalogue file for self calibration")
+					new_line = "SourceCatalogueFile=catalogue.txt\n"
+				else:
+                                	self.logger.info("Setting catalogue file for imaging")
+                                	new_line = "SourceCatalogueFile=catalogue_imaging.txt\n"
+
 			if self.adjust_cal_params == True:
 				if 'NumberOfSourcesToPeel' in line:
 						new_line = "NumberOfSourcesToPeel=%s\n" %(self.npeel)
@@ -416,11 +421,11 @@ class MWAPipe:
 							new_line = "UpdateCalibratorAmplitudes=1\n"
 						else:
 							new_line = "UpdateCalibratorAmplitudes=0\n"
-				if 'PrimaryCalibrator' in line:
-					if cal_src == None:
-						continue
-					else:
-						new_line = "PrimaryCalibrator=%s" %(cal_src)
+#				if 'PrimaryCalibrator' in line:
+#					if cal_src == None:
+#						continue
+#					else:
+#						new_line = "PrimaryCalibrator=%s" %(cal_src)
 
 			if line.startswith('ObservationImageCentreRA'):
 				if ra_hrs == None:
@@ -438,11 +443,11 @@ class MWAPipe:
 						new_line = "ObservationImageCentreDec=%f\n" %(-26.0 - 42.0/60.0 - 11.95/3600.0)
 					else:
 						new_line = "ObservationImageCentreDec=%f\n" %(dec_deg)
-			if line.startswith('PrimaryCalibrator'):
-				if cal_src == None:
-					continue
-				else:
-					new_line = "PrimaryCalibrator=%s" %(cal_src)
+#			if line.startswith('PrimaryCalibrator'):
+#				if cal_src == None:
+#					continue
+#				else:
+#					new_line = "PrimaryCalibrator=%s" %(cal_src)
 			if line.startswith('CorrDumpsPerCadence'):
 				new_line = "CorrDumpsPerCadence=%d\n" %(corr_dumps_per_cadence)
 			if line.startswith('NumberOfIntegrationBins'):
@@ -631,7 +636,7 @@ class MWAPipe:
 
 		# Generate an RTS input file based on the template
 		self.logger.info("Generating input files %s" %(target_id))
-		ncoarse = self._generate_RTS_input_files(target_id, "%s/%s" %(self.work_dir, target_id), "cal", "%s/%scal.in" %(self.work_dir, self.template_base), None, None, None, "calibrate")
+		ncoarse = self._generate_RTS_input_files(target_id, "%s/%s" %(self.work_dir, target_id), "cal", "%s/%scal.in" %(self.work_dir, self.template_base), None, None, "calibrate")
 		# Copy over the default flag files
 #				os.system("cp %s/fl*.txt ." %(self.work_dir))
 
@@ -694,7 +699,7 @@ class MWAPipe:
 			
 		# Generate an RTS input file based on the template
 		self.logger.info("Generating RTS imaging input files for %s" %(target_id))
-		ncoarse = self._generate_RTS_input_files(target_id, "%s/%s" %(self.work_dir, target_id), "img", "%s/%simg.in" %(self.work_dir, self.template_base), None, ra_hrs, dec_deg, "image")
+		ncoarse = self._generate_RTS_input_files(target_id, "%s/%s" %(self.work_dir, target_id), "img", "%s/%simg.in" %(self.work_dir, self.template_base), ra_hrs, dec_deg, "image")
 		# Do the imaging
 		self.logger.info("Imaging %s" %(target_id))
 		os.system("aprun -N 1 -n %d %s rts_img.in" %(ncoarse + 1, self.rts_bin))
@@ -758,7 +763,7 @@ class MWAPipe:
 		
 		# Generate an RTS input file based on the template
 		self.logger.info("Generating RTS input files to accumulate weights for %s" %(target_id))
-		ncoarse = self._generate_RTS_input_files(target_id, "%s/%s" %(self.work_dir, target_id), "acc", "%s/%simg.in" %(self.work_dir, self.template_base), None, ra_hrs, dec_deg, "accumulate")
+		ncoarse = self._generate_RTS_input_files(target_id, "%s/%s" %(self.work_dir, target_id), "acc", "%s/%simg.in" %(self.work_dir, self.template_base), ra_hrs, dec_deg, "accumulate")
 		# Generate the weights file
 		self.logger.info("Accumulate weights for %s" %(target_id))
 		os.system("aprun -N 1 -n %d %s rts_acc.in" %(ncoarse + 1, self.rts_bin))
@@ -814,7 +819,7 @@ class MWAPipe:
 		
 		# Generate an RTS input file based on the template
 		self.logger.info("Generating RTS input files to accumulate weights for %s" %(target_id))
-		ncoarse = self._generate_RTS_input_files(target_id, "%s/%s" %(self.work_dir, target_id), "uv", "%s/%suv.in" %(self.work_dir, self.template_base), None, ra_hrs, dec_deg, "uv")
+		ncoarse = self._generate_RTS_input_files(target_id, "%s/%s" %(self.work_dir, target_id), "uv", "%s/%suv.in" %(self.work_dir, self.template_base), ra_hrs, dec_deg, "uv")
 		# Generate the weights file
 		self.logger.info("UV Dump for %s" %(target_id))
 		os.system("aprun -N 1 -n %d %s rts_uv.in" %(ncoarse + 1, self.rts_bin))
