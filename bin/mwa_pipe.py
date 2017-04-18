@@ -698,7 +698,7 @@ class MWAPipe:
 		# Do the imaging
 		self.logger.info("Imaging %s" %(target_id))
 		os.system("aprun -N 1 -n %d %s rts_img.in" %(ncoarse + 1, self.rts_bin))
-		if self.remove_inst_pols == "true":
+		if self.remove_inst_pols == True:
 			remove_pols()
 		self.logger.info("Moving image files to destination path: %s" %(dest_image_path))
 		os.system("mkdir -p %s/%s/%s" %(self.work_dir, dest_image_path, target_id))
