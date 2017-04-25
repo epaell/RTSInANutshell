@@ -37,11 +37,24 @@ def stats(obsid, maxrmsfactor):
 		rms.append(fstd)
 #		if fstd > maxrms:
 #			os.system("mv *%s*.fits bad" %(freq))
-	medrms = np.nanmedian(np.array(rms))
-	print("Median RMS = %f" %(medrms))
-	for chan in range(nchan):
-		if rms[chan] > medrms * maxrmsfactor:
-			os.system("mv *%s*.fits bad" %(freqs[chan]))
+	rms = np.array(rms)
+	freqs = np.array(freqs)
+	for i in range(5):
+		print("Iteration = %d" %(i))
+		medrms = np.nanmedian(np.array(rms))
+		print("Median RMS = %f" %(medrms))
+		newfreqs = []
+		newrms = []
+		for chan in range(len(freqs)):
+			if rms[chan] > (medrms * maxrmsfactor):
+				os.system("mv *%s*.fits bad" %(freqs[chan]))
+			else:
+				newfreqs.append(freqs[chan])
+				newrms.append(rms[chan])
+		freqs = np.array(newfreqs)
+		rms = np.array(newrms)
+		if len(rms) == 0:
+			break
 	os.chdir(workdir)
 
 obsids = glob.glob("1?????????")
