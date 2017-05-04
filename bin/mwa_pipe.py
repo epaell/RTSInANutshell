@@ -415,7 +415,7 @@ class MWAPipe:
 			if line.startswith('BaseFilename'):
 				new_line = "BaseFilename=%s/*_gpubox\n" %(data_path)
 				if self.use_flag == True:
-					new_line += "ImportCotterFlags=1\nImportCotterBasename=%s\n\n" %(obs_path)
+					new_line += "ImportCotterFlags=1\nImportCotterBasename=%s/%s\n\n" %(obs_path, obs_id)
 				if self.use_meta == True:
 					new_line += "ReadMetafitsFile=1\nMetafitsFilename=%s/%s\n" %(data_path, obs_id)
 			if line.startswith('CorrDumpTime'):
