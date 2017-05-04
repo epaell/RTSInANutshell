@@ -88,11 +88,11 @@ def get_mwaf_chans(f):
 	hdu.close()
 	return nchan
 
-def read_mwaf_data(obsid):
+def read_mwaf_data(obs_id):
 	"""read the flagging information for all coarse channels.
 
 	Args:
-		obsid : the obsid for which flagging data will be read.
+		obs_id : the obs_id for which flagging data will be read.
 
 	Returns:
 		an array (nCoarse x nchan) containing the number of visibilities flagged in each channel of each coarse channel.
@@ -102,18 +102,14 @@ def read_mwaf_data(obsid):
 
 	"""
 	COARSE_CHANNELS = 24
-	# Read flagging information for obsid
-	os.system("rm -fr *.mwaf")
-	zip_file = "%s_flags.zip" %(obsid)
-	assert (os.path.isfile(zip_file) == True), "Cotter flag zip file for obsid %s does not exist. WARNING: not using Cotter flags." %(obsid)
-	os.system("unzip -o -j %s" %(zip_file))
-	mwaf_files = glob.glob("%s_*.mwaf" %(obsid))
+	# Read flagging information for obs_id
+	mwaf_files = glob.glob("%s_*.mwaf" %(obs_id))
 	assert (len(mwaf_files) == COARSE_CHANNELS), "Couldn't find 24 MWAF files."
 	nchan = get_mwaf_chans(mwaf_files[0])
 	nflagged = np.zeros((COARSE_CHANNELS, nchan), dtype = np.int)
 
 	for cc in range(COARSE_CHANNELS):
-		in_file = "%s_%02d.mwaf" %(obsid, cc + 1)
+		in_file = "%s_%02d.mwaf" %(obs_id, cc + 1)
 		hdu = fits.open(in_file)
 
 		flags = hdu[1].data["FLAGS"]
@@ -128,12 +124,12 @@ def read_mwaf_data(obsid):
 		hdu.close()
 	return nflagged, nchan
 
-def update_mwaf_data(obsid, flagged, threshold):
+def update_mwaf_data(obs_id, flagged, threshold):
 	"""update the flagging information for all coarse channels. Any channels with the number of flagged
 		visibilities exceeding the median by a specified threshold will be flagged entirely.
 
 	Args:
-		obsid : the obsid for which flagging data will be updated.
+		obs_id : the obs_id for which flagging data will be updated.
 		flagged : the flagged channels read using read_mwaf_data.
 		threshold : the factor above the median number of flagged visibilities at which the entire channel is flagged.
 
@@ -145,7 +141,7 @@ def update_mwaf_data(obsid, flagged, threshold):
 
 	"""
 	COARSE_CHANNELS = 24
-	mwaf_files = glob.glob("%s_*.mwaf" %(obsid))
+	mwaf_files = glob.glob("%s_*.mwaf" %(obs_id))
 	if(len(mwaf_files) != COARSE_CHANNELS):
 		sys.exit(-1)
 	nchan = get_mwaf_chans(mwaf_files[0])
@@ -155,7 +151,7 @@ def update_mwaf_data(obsid, flagged, threshold):
 #	print("Flagging %d channels out of %d" %(len(bad[1]), nchan * COARSE_CHANNELS))
 	nbad = len(bad[1])
 	for cc in range(COARSE_CHANNELS):
-		in_file = "%s_%02d.mwaf" %(obsid, cc + 1)
+		in_file = "%s_%02d.mwaf" %(obs_id, cc + 1)
 #		logger.info("Updating %s:" %(in_file))
 		hdu = fits.open(in_file, mode="update")
 
@@ -226,6 +222,7 @@ class MWAPipe:
 			self.logger.warning("RTS_CAT_PATH not set, using %s as default" %(self.CAT_PATH))
 			cat_path = self.CAT_PATH
 		self.cat_path = cat_path
+		self.data_path = None			# Path where data is stored
 		self.weighting = "natural"
 		self.robustness = 2.0
 		self.do_accumulate = False
@@ -266,14 +263,44 @@ class MWAPipe:
 		self.make_stokes = True
 		self.remove_inst_pols = True
 
-	def _generate_RTS_input_files(self, obsid, data_path, basename, template, ra_hrs, dec_deg, mode = None):
+	def get_data_path(self, obs_id = None):
+		if self.data_path == None:
+			if obs_id == None:
+				return self.work_dir
+			else:
+				return "%s/%s" %(self.work_dir, obs_id)
+		if obs_id == None:
+			return self.data_path
+		return "%s/%s" %(self.data_path, obs_id)
+
+	def move_to_target(self, obs_id = None):
+		if obs_id == None:
+			work_path = self.work_dir
+		else:
+			work_path = "%s/%s" %(self.work_dir, obs_id)
+		# Make sure the destination exists
+		os.system("mkdir -p %s" %(work_path))
+		# Change directory
+		os.chdir(work_path)
+		
+	def move_to_data(self, obs_id = None):
+		data_path = self.get_data_path(obs_id)
+		assert (os.path.isfile(data_path) == True), "Data path does not exist: %s" %(data_path)
+		os.chdir(data_path)
+		
+	def return_home(self):
+		# Change directory
+		os.chdir(self.work_dir)
+		
+	def _generate_RTS_input_files(self, obs_id, basename, template, ra_hrs, dec_deg, mode = None):
 		if not (self.array == '32T' or self.array == '128T'):
 			self.logger.error("Array Parameter should be either '32T' or '128T'")
 			return
 	
+		data_path = self.get_data_path(obs_id)
 		# Set the time.
-		self.logger.info("obsid=%s" %(obsid))
-		obs_time = ephem_utils.MWATime(gpstime = float(obsid))
+		self.logger.info("obs_id=%s" %(obs_id))
+		obs_time = ephem_utils.MWATime(gpstime = float(obs_id))
 		lst_hrs = float(obs_time.LST) / 15.0
 		jd = obs_time.MJD + 2400000.5
 		self.logger.info("lst=%.4f hr" %(lst_hrs))
@@ -386,9 +413,9 @@ class MWAPipe:
 			if line.startswith('BaseFilename'):
 				new_line = "BaseFilename=%s/*_gpubox\n" %(data_path)
 				if self.use_flag == True:
-					new_line += "ImportCotterFlags=1\nImportCotterBasename=%s/%s\n\n" %(data_path, obsid)
+					new_line += "ImportCotterFlags=1\nImportCotterBasename=%s/%s\n\n" %(data_path, obs_id)
 				if self.use_meta == True:
-					new_line += "ReadMetafitsFile=1\nMetafitsFilename=%s/%s\n" %(data_path, obsid)
+					new_line += "ReadMetafitsFile=1\nMetafitsFilename=%s/%s\n" %(data_path, obs_id)
 			if line.startswith('CorrDumpTime'):
 				new_line = line.replace(line[len('CorrDumpTime='):],"%.1f" %(header["INT_TIME"]) + '\n')
 			if line.startswith('FscrunchChan'):
@@ -408,8 +435,8 @@ class MWAPipe:
 					self.logger.info("Setting catalogue file for self calibration")
 					new_line = "SourceCatalogueFile=catalogue.txt\n"
 				else:
-                                	self.logger.info("Setting catalogue file for imaging")
-                                	new_line = "SourceCatalogueFile=catalogue_imaging.txt\n"
+					self.logger.info("Setting catalogue file for imaging")
+					new_line = "SourceCatalogueFile=catalogue_imaging.txt\n"
 
 			if self.adjust_cal_params == True:
 				if 'NumberOfSourcesToPeel' in line:
@@ -421,12 +448,6 @@ class MWAPipe:
 							new_line = "UpdateCalibratorAmplitudes=1\n"
 						else:
 							new_line = "UpdateCalibratorAmplitudes=0\n"
-#				if 'PrimaryCalibrator' in line:
-#					if cal_src == None:
-#						continue
-#					else:
-#						new_line = "PrimaryCalibrator=%s" %(cal_src)
-
 			if line.startswith('ObservationImageCentreRA'):
 				if ra_hrs == None:
 					new_line = line.replace(line[len('ObservationImageCentreRA='):],str(header["RA_HRS"]) + '\n')
@@ -443,11 +464,6 @@ class MWAPipe:
 						new_line = "ObservationImageCentreDec=%f\n" %(-26.0 - 42.0/60.0 - 11.95/3600.0)
 					else:
 						new_line = "ObservationImageCentreDec=%f\n" %(dec_deg)
-#			if line.startswith('PrimaryCalibrator'):
-#				if cal_src == None:
-#					continue
-#				else:
-#					new_line = "PrimaryCalibrator=%s" %(cal_src)
 			if line.startswith('CorrDumpsPerCadence'):
 				new_line = "CorrDumpsPerCadence=%d\n" %(corr_dumps_per_cadence)
 			if line.startswith('NumberOfIntegrationBins'):
@@ -475,21 +491,20 @@ class MWAPipe:
 		template_file.close()
 		return len(band_list)
 
-	def clean(self, target_id):
-		"""removes all temporary files from the specified target obsid.
+	def clean(self, obs_id):
+		"""removes all temporary files from the specified target obs_id.
 
 		Args:
-			target_id : the obsid where all temporary files will be removed.
+			obs_id : the obs_id where all temporary files will be removed.
 
 		Returns:
 	
 		Raises:
 	
 		"""
-		# Move to the target directory
-		os.chdir("%s/%s" %(self.work_dir, target_id))
+		self.move_to_target(obs_id)
 		# Remove old files
-		self.logger.info("Cleaning up %s/%s" %(self.work_dir, target_id))
+		self.logger.info("Cleaning up %s/%s" %(self.work_dir, obs_id))
 		# Remove instrumental polarisation images
 		remove_pols()
 		# Remove Stokes images
@@ -497,13 +512,13 @@ class MWAPipe:
 		# Remove any other miscellaneous files
 		os.system("rm -fr *.log 2*.fits *.btr uvbeam*.fits pee*.txt rest*.txt cor*.fits int*.fits *.dat cat*.txt rts.in")
 		# Return to working directory
-		os.chdir("%s" %(self.work_dir))
+		self.return_home()
 
-	def reflag(self, target_id, threshold):
+	def reflag(self, obs_id, threshold):
 		"""read flagging information and completely flag channels that already have excessive flagging.
 
 		Args:
-			target_id : the obsid where excessively flagged channels will be flagged entirely.
+			obs_id : the obs_id where excessively flagged channels will be flagged entirely.
 			threshold : the factor above the median number of flagged visibilities at which the entire channel is flagged.
 
 		Returns:
@@ -511,30 +526,39 @@ class MWAPipe:
 		Raises:
 	
 		"""
-		self.logger.info("Reflagging %s : threshold=%f" %(target_id, threshold))
-		# Move to the target directory
-		os.chdir("%s/%s" %(self.work_dir, target_id))
+		self.logger.info("Reflagging %s : threshold=%f" %(obs_id, threshold))
+		# Work out where the data resides
+		data_path = self.get_data_path(obs_id)
+		# Move to the work directory
+		self.move_to_target(obs_id)
+		# Remove any old mwaf files that may exist in the work path
+		os.system("rm -fr *.mwaf")
+		# Extract mwaf files from the zip file downloaded from the archive
+		zip_file = "%s/%s_flags.zip" %(data_path, obs_id)
+		assert (os.path.isfile(zip_file) == True), "Cotter flag zip file for obs_id %s does not exist. WARNING: not using Cotter flags." %(obs_id)
+		os.system("unzip -o -j %s" %(zip_file))
+
 		# Read existing flagging information
 		try:
-			flagged, nchan = read_mwaf_data(target_id)
+			flagged, nchan = read_mwaf_data(obs_id)
 		except AssertionError as e:
 			self.logger.error(e.args[0])
 			return
 		# Flag excessively flagged channels
-		nbad, ntotal = update_mwaf_data(target_id, flagged, threshold)
+		nbad, ntotal = update_mwaf_data(obs_id, flagged, threshold)
 		self.logger.info("Flagging %d channels out of %d" %(nbad, ntotal))
-		self.logger.info("Finished reflagging %s" %(target_id))
+		self.logger.info("Finished reflagging %s" %(obs_id))
 		# Return to working directory
-		os.chdir("%s" %(self.work_dir))
+		self.return_home()
 
-	def pair_reflag(self, target1_id, target2, threshold):
-		"""read flagging information for a pair of target obsids and completely flag channels that already
+	def pair_reflag(self, obs_id1, target2, threshold):
+		"""read flagging information for a pair of target obs_ids and completely flag channels that already
 			have excessive flagging. Flagging in both targets will be made consistent so that the same channels
-			are flagged in each obsid.
+			are flagged in each obs_id.
 
 		Args:
-			target1_id : the first obsid where excessively flagged channels will be flagged entirely.
-			target2_id : the second obsid where excessively flagged channels will be flagged entirely.
+			obs_id1 : the first obs_id where excessively flagged channels will be flagged entirely.
+			obs_id2 : the second obs_id where excessively flagged channels will be flagged entirely.
 			threshold : the factor above the median number of flagged visibilities at which the entire channel is flagged.
 
 		Returns:
@@ -542,114 +566,132 @@ class MWAPipe:
 		Raises:
 	
 		"""
-		self.logger.info("Reflagging Pair %s+%s : threshold=%f" %(target1_id, target2, threshold))
-		# Move to the first target directory
-		os.chdir("%s/%s" %(self.work_dir, target1_id))
+		self.logger.info("Reflagging Pair %s+%s : threshold=%f" %(obs_id1, obs_id2, threshold))
+		# Work out where the data resides
+		data_path = self.get_data_path(obs_id1)
+		# Move to the work directory
+		self.move_to_target(obs_id1)
+		# Remove any old mwaf files that may exist in the work path
+		os.system("rm -fr *.mwaf")
+		# Extract mwaf files from the zip file downloaded from the archive
+		zip_file = "%s/%s_flags.zip" %(data_path, obs_id1)
+		assert (os.path.isfile(zip_file) == True), "Cotter flag zip file for obs_id %s does not exist. WARNING: not using Cotter flags." %(obs_id1)
+		os.system("unzip -o -j %s" %(zip_file))
+
 		# Read existing flagging information
 		try:
-			flagged1, nchan1 = read_mwaf_data(target1_id)
+			flagged1, nchan1 = read_mwaf_data(obs_id1)
 		except AssertionError as e:
 			self.logger.error(e.args[0])
 			return
-		# Move to the second target directory
-		os.chdir("%s/%s" %(self.work_dir, target2))
+
+		# Work out where the data for the second obs_id resides
+		data_path = self.get_data_path(obs_id2)
+		# Move to the work directory for that obs_id
+		self.move_to_target(obs_id2)
+		# Remove any old mwaf files that may exist in the work path
+		os.system("rm -fr *.mwaf")
+		# Extract mwaf files from the zip file downloaded from the archive
+		zip_file = "%s/%s_flags.zip" %(data_path, obs_id2)
+		assert (os.path.isfile(zip_file) == True), "Cotter flag zip file for obs_id %s does not exist. WARNING: not using Cotter flags." %(obs_id2)
+		os.system("unzip -o -j %s" %(zip_file))
+
 		# Read existing flagging information
 		try:
-			flagged2, nchan2 = read_mwaf_data(target2)
+			flagged2, nchan2 = read_mwaf_data(obs_id2)
 		except AssertionError as e:
 			self.logger.error(e.args[0])
 			return
 		if nchan1 != nchan2:
-			self.logger.error("Channels in specified obsids do not match %s=%d; %s=%d" %(obsid1, nchan1, obsid2, nchan2))
+			self.logger.error("Channels in specified obs_ids do not match %s=%d; %s=%d" %(obs_id1, nchan1, obs_id2, nchan2))
 			return
 		flagged = flagged1 + flagged2
 		nchan = nchan1
-		os.chdir("%s/%s" %(self.work_dir, target1_id))
+		self.move_to_target(obs_id1)
 		# Flag excessively flagged channels in the first target
-		nbad, ntotal = update_mwaf_data(target1_id, flagged, threshold)
+		nbad, ntotal = update_mwaf_data(obs_id1, flagged, threshold)
 		self.logger.info("Flagging %d channels out of %d" %(nbad, ntotal))
-		os.chdir("%s/%s" %(self.work_dir, target2))
+		self.move_to_target(obs_id2)
 		# Flag excessively flagged channels in the second target
-		nbad, ntotal = update_mwaf_data(target2, flagged, threshold)
+		nbad, ntotal = update_mwaf_data(obs_id2, flagged, threshold)
 		self.logger.info("Flagging %d channels out of %d" %(nbad, ntotal))
-		self.logger.info("Finished reflagging %s+%s" %(target1_id, target2))
+		self.logger.info("Finished reflagging %s+%s" %(obs_id1, target2))
 		# Return to working directory
-		os.chdir("%s" %(self.work_dir))
+		self.return_home()
 
-	def fetch_data(self, target_id):
-		"""fetch visilibity, flagging and metadata files from the archive for the specified obsid.
+	def fetch_data(self, obs_id):
+		"""fetch visilibity, flagging and metadata files from the archive for the specified obs_id.
 
 		Args:
-			target_id : the obsid for which data will be retrieved from the archive.
+			obs_id : the obs_id for which data will be retrieved from the archive.
 
 		Returns:
 	
 		Raises:
 	
 		"""
-		self.logger.info("Fetch data for %s" %(target_id))
-		# Move to the work directory
-		os.chdir("%s" %(self.work_dir))
-		os.system("obsdownload.py -o %s" %(target_id))
-		self.logger.info("Finished fetching data for %s" %(target_id))
+		self.logger.info("Fetch data for %s" %(obs_id))
+		self.move_to_data()
+		os.system("obsdownload.py -o %s" %(obs_id))
+		self.logger.info("Finished fetching data for %s" %(obs_id))
+		self.return_home()
 
-	def fetch_metadata(self, target_id):
-		"""regenerate metadata files (rather than fetching from the archive) for the specified obsid.
+	def fetch_metadata(self, obs_id):
+		"""regenerate metadata files (rather than fetching from the archive) for the specified obs_id.
 
 		Args:
-			target_id : the obsid for which metadata will be generated.
+			obs_id : the obs_id for which metadata will be generated.
 
 		Returns:
 	
 		Raises:
 	
 		"""
-		self.logger.info("Fetch metadata for %s" %(target_id))
+		self.logger.info("Fetch metadata for %s" %(obs_id))
 		# Move to the target directory
-		os.chdir("%s/%s" %(self.work_dir, target_id))
-		os.system("wget -O %s_metafits_ppds.fits http://mwa-metadata01.pawsey.org.au/metadata/fits?obs_id=%s" %(target_id, target_id))
+		self.move_to_data(obs_id)
+		os.system("wget -O %s_metafits_ppds.fits http://mwa-metadata01.pawsey.org.au/metadata/fits?obs_id=%s" %(obs_id, obs_id))
 		# Return to working directory
-		os.chdir("%s" %(self.work_dir))
+		self.return_home()
 	
-	def calibrate(self, target_id):
-		self.logger.info("Calibrate %s" %(target_id))
-
-		# Move to the target directory
-		os.chdir("%s/%s" %(self.work_dir, target_id))
+	def calibrate(self, obs_id):
+		self.logger.info("Calibrate %s" %(obs_id))
+		self.move_to_target(obs_id)
 
 		# Remove old files
-		self.logger.info("Removing temporary files in %s/%s" %(self.work_dir, target_id))
+		self.logger.info("Removing temporary files in %s/%s" %(self.work_dir, obs_id))
 		os.system("rm -fr *.log 2*.fits *.btr uvbeam*.fits pee*.txt rest*.txt cor*.fits int*.fits *.dat")
 
 		# Use selfcal of field to do calibration
-		self.logger.info("Generating initial calibration with %s" %(target_id))
+		self.logger.info("Generating initial calibration with %s" %(obs_id))
 		if self.cal_cat == None:
-			if os.path.exists("%s_metafits_ppds.fits" %(target_id)) == True:
-				self.logger.info("Using %s_metafits_ppds.fits as input" %(target_id))
-				os.system("python /group/mwaops/CODE/bin/srclist_by_beam.py -m %s_metafits_ppds.fits -c %f -s %s/%s -n %s" %(target_id, self.cat_extent, self.cat_path, self.src_cat, self.cal_srcs))
+			metafits_path = "%s/%s_metafits_ppds.fits" %(self.get_data_path(obs_id), obs_id)
+			if os.path.exists(metafits_path) == True:
+				self.logger.info("Using %s as input" %(metafits_path))
+				os.system("python /group/mwaops/CODE/bin/srclist_by_beam.py -m %s -c %f -s %s/%s -n %s" %(metafits_path, self.cat_extent, self.cat_path, self.src_cat, self.cal_srcs))
 			else:
-				self.logger.error("Unable to find %s_metafits_ppds.fits to generate catalogue against!" %(target_id))
+				self.logger.error("Unable to find %s_metafits_ppds.fits to generate catalogue against!" %(obs_id))
 			os.system("mv *patch*.txt catalogue.txt")
 		else:
-			# Re-use a catalogue generated for the specified obsid
+			# Re-use a catalogue generated for the specified obs_id
 			os.system("cp %s/%s/catalogue.txt ." %(self.work_dir, self.cal_cat))
 
 		# Generate an RTS input file based on the template
-		self.logger.info("Generating input files %s" %(target_id))
-		ncoarse = self._generate_RTS_input_files(target_id, "%s/%s" %(self.work_dir, target_id), "cal", "%s/%scal.in" %(self.work_dir, self.template_base), None, None, "calibrate")
+		self.logger.info("Generating input files %s" %(obs_id))
+		ncoarse = self._generate_RTS_input_files(obs_id, "cal", "%s/%scal.in" %(self.work_dir, self.template_base), None, None, "calibrate")
 		# Copy over the default flag files
 #				os.system("cp %s/fl*.txt ." %(self.work_dir))
 
 		# Do the calibration
-		self.logger.info("Performing calibration for %s" %(target_id))
+		self.logger.info("Performing calibration for %s" %(obs_id))
 		os.system("aprun -N 1 -n %d %s rts_cal.in" %(ncoarse + 1, self.rts_bin))
 			
-		self.logger.info("Finished calibrating %s" %(target_id))
+		self.logger.info("Finished calibrating %s" %(obs_id))
 		# Return to working directory
-		os.chdir("%s" %(self.work_dir))
+		self.return_home()
 
-	def image(self, target_id, dest_image_path, cal_id = None, ra_hrs = None, dec_deg = None):
-		self.logger.info("Imaging %s" %(target_id))
+	def image(self, obs_id, dest_image_path, cal_id = None, ra_hrs = None, dec_deg = None):
+		self.logger.info("Imaging %s" %(obs_id))
 		self.logger.info("Using calibration from %s" %(cal_id))
 		if self.weighting == "robust":
 			self.logger.info("Weighting = %s (robustness=%.1f)" %(self.weighting, self.robustness))
@@ -659,178 +701,178 @@ class MWAPipe:
 		if ra_hrs != None and dec_deg != None:
 			self.logger.info("Using (%f, %f) as imaging centre" %(ra_hrs, dec_deg))
 		# Move to the target directory
-		self.logger.info("Cleaning up %s/%s" %(self.work_dir, target_id))
-		os.chdir("%s/%s" %(self.work_dir, target_id))
+		self.logger.info("Cleaning up %s/%s" %(self.work_dir, obs_id))
+		self.move_to_target(obs_id)
 		# Remove old files
 		remove_pols()
 		remove_pols(["I", "Q", "U", "V"])
 		os.system("rm -fr *.log *.btr pee*.txt rest*.txt cor*.fits int*.fits")
 		# Move to final cal to see if there is anything there
 		if cal_id == None:
-			os.chdir("%s/%s" %(self.work_dir, target_id))
+			self.move_to_target(obs_id)
 			# Use calibration already in target
 		else:
-			# Use calibration from specified obsid
-			os.chdir("%s/%s" %(self.work_dir, cal_id))
-			if cal_id != target_id:
+			# Use calibration from specified obs_id
+			self.move_to_target(cal_id)
+			if cal_id != obs_id:
 				# Copy the calibration solutions to the target
-				self.logger.info("Copying calibration files from %s to %s" %(cal_id, target_id))
+				self.logger.info("Copying calibration files from %s to %s" %(cal_id, obs_id))
 				# copy across the calibration data ... unless we are imaging the calibrator.
-				os.system("cp *.dat %s/%s" %(self.work_dir, target_id))
+				os.system("cp *.dat %s/%s" %(self.work_dir, obs_id))
 
 		# Check if a calibration exists
 		if len(glob.glob("*.dat")) == 0:
 			self.logger.warning("No calibration data found!")
 			return
 
-		# Move to the target directory
-		os.chdir("%s/%s" %(self.work_dir, target_id))
+		self.move_to_target(obs_id)
 		# Generate the catalogue for imaging.
 		if self.img_cat == None:
-			if os.path.exists("%s_metafits_ppds.fits" %(target_id)) == True:
-				self.logger.info("Using %s_metafits_ppds.fits as input" %(target_id))
-				os.system("python /group/mwaops/CODE/bin/srclist_by_beam.py -x -m %s_metafits_ppds.fits -c %f -s %s/%s -n %s" %(target_id, self.cat_extent, self.cat_path, self.src_cat, self.img_srcs))
+			metafits_path = "%s/%s_metafits_ppds.fits" %(self.get_data_path(obs_id), obs_id)
+			if os.path.exists(metafits_path) == True:
+				self.logger.info("Using %s as input" %(metafits_path))
+				os.system("python /group/mwaops/CODE/bin/srclist_by_beam.py -x -m %s -c %f -s %s/%s -n %s" %(metafits_path, self.cat_extent, self.cat_path, self.src_cat, self.img_srcs))
 			else:
-				self.logger.error("Unable to find %s_metafits_ppds.fits to generate catalogue against!" %(target_id))
+				self.logger.error("Unable to find %s_metafits_ppds.fits to generate catalogue against!" %(obs_id))
 			os.system("mv *peel*.txt catalogue_imaging.txt")
 		else:
 			self.logger.info("Using catalogue from %s" %(self.img_cat))
 			os.system("cp %s/%s/catalogue_imaging.txt ." %(self.work_dir, self.img_cat))
 			
 		# Generate an RTS input file based on the template
-		self.logger.info("Generating RTS imaging input files for %s" %(target_id))
-		ncoarse = self._generate_RTS_input_files(target_id, "%s/%s" %(self.work_dir, target_id), "img", "%s/%simg.in" %(self.work_dir, self.template_base), ra_hrs, dec_deg, "image")
+		self.logger.info("Generating RTS imaging input files for %s" %(obs_id))
+		ncoarse = self._generate_RTS_input_files(obs_id, "img", "%s/%simg.in" %(self.work_dir, self.template_base), ra_hrs, dec_deg, "image")
 		# Do the imaging
-		self.logger.info("Imaging %s" %(target_id))
+		self.logger.info("Imaging %s" %(obs_id))
 		os.system("aprun -N 1 -n %d %s rts_img.in" %(ncoarse + 1, self.rts_bin))
 		if self.remove_inst_pols == True:
 			remove_pols()
 		self.logger.info("Moving image files to destination path: %s" %(dest_image_path))
-		os.system("mkdir -p %s/%s/%s" %(self.work_dir, dest_image_path, target_id))
-		move_images(["XX", "YY", "XYim", "XYre"], "%s/%s/%s" %(self.work_dir, dest_image_path, target_id))
-		move_images(["I", "Q", "U", "V"], "%s/%s/%s" %(self.work_dir, dest_image_path, target_id))
-		os.system("mv peeled_sources_*.txt %s/%s/%s" %(self.work_dir, dest_image_path, target_id))
-		os.system("mv restore_*.txt %s/%s/%s" %(self.work_dir, dest_image_path, target_id))
-		os.system("mv rts_*.log %s/%s/%s" %(self.work_dir, dest_image_path, target_id))
-		os.system("cp *.dat %s/%s/%s" %(self.work_dir, dest_image_path, target_id))
-		os.system("cp *.in %s/%s/%s" %(self.work_dir, dest_image_path, target_id))
-		self.logger.info("Finished imaging %s" %(target_id))
+		os.system("mkdir -p %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
+		move_images(["XX", "YY", "XYim", "XYre"], "%s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
+		move_images(["I", "Q", "U", "V"], "%s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
+		os.system("mv peeled_sources_*.txt %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
+		os.system("mv restore_*.txt %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
+		os.system("mv rts_*.log %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
+		os.system("cp *.dat %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
+		os.system("cp *.in %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
+		self.logger.info("Finished imaging %s" %(obs_id))
 		# Return to working directory
-		os.chdir("%s" %(self.work_dir))
+		self.return_home()
 
-	def accumulate(self, target_id, dest_image_path, cal_id = None, ra_hrs = None, dec_deg = None):
-		self.logger.info("Accumulating weights for %s" %(target_id))
+	def accumulate(self, obs_id, dest_image_path, cal_id = None, ra_hrs = None, dec_deg = None):
+		self.logger.info("Accumulating weights for %s" %(obs_id))
 		self.logger.info("Using calibration from %s" %(cal_id))
 
 		if ra_hrs != None and dec_deg != None:
 			self.logger.info("Using (%f, %f) as imaging centre" %(ra_hrs, dec_deg))
 		# Move to the target directory
-		self.logger.info("Cleaning up %s/%s" %(self.work_dir, target_id))
-		os.chdir("%s/%s" %(self.work_dir, target_id))
+		self.move_to_target(obs_id)
+		self.logger.info("Cleaning up %s/%s" %(self.work_dir, obs_id))
 		# Remove old files
 		os.system("rm -fr *.log 2*.fits *.btr uvbeam*.fits pee*.txt rest*.txt cor*.fits int*.fits")
 		# Move to final cal to see if there is anything there
 		if cal_id == None:
-			os.chdir("%s/%s" %(self.work_dir, target_id))
+			self.move_to_target(obs_id)
 			# Use calibration already in target
 		else:
-			# Use calibration from specified obsid
-			os.chdir("%s/%s" %(self.work_dir, cal_id))
-			if cal_id != target_id:
+			self.move_to_target(cal_id)
+			# Use calibration from specified obs_id
+			if cal_id != obs_id:
 				# Copy the calibration solutions to the target
-				self.logger.info("Copying calibration files from %s to %s" %(cal_id, target_id))
+				self.logger.info("Copying calibration files from %s to %s" %(cal_id, obs_id))
 				# copy across the calibration data ... unless we are imaging the calibrator.
-				os.system("cp *.dat %s/%s" %(self.work_dir, target_id))
+				os.system("cp *.dat %s/%s" %(self.work_dir, obs_id))
 
 		# Check if a calibration exists
 		if len(glob.glob("*.dat")) == 0:
 			self.logger.warning("No calibration data found!")
 			return
 
-		# Move to the target directory
-		os.chdir("%s/%s" %(self.work_dir, target_id))
+		self.move_to_target(obs_id)
 		# Generate the catalogue for imaging.
 		if self.img_cat == None:
-			if os.path.exists("%s_metafits_ppds.fits" %(target_id)) == True:
-				self.logger.info("Using %s_metafits_ppds.fits as input" %(target_id))
-				os.system("python /group/mwaops/CODE/bin/srclist_by_beam.py -x -m %s_metafits_ppds.fits -c %f -s %s/%s -n %s" %(target_id, self.cat_extent, self.cat_path, self.src_cat, self.img_srcs))
+			metafits_path = "%s/%s_metafits_ppds.fits" %(self.get_data_path(obs_id), obs_id)
+			if os.path.exists(metafits_path) == True:
+				self.logger.info("Using %s as input" %(metafits_path))
+				os.system("python /group/mwaops/CODE/bin/srclist_by_beam.py -x -m %s -c %f -s %s/%s -n %s" %(metafits_path, self.cat_extent, self.cat_path, self.src_cat, self.img_srcs))
 			else:
-				self.logger.error("Unable to find %s_metafits_ppds.fits to generate catalogue against!" %(target_id))
+				self.logger.error("Unable to find %s_metafits_ppds.fits to generate catalogue against!" %(obs_id))
 			os.system("mv *peel*.txt catalogue_imaging.txt")
 		else:
 			self.logger.info("Using catalogue from %s" %(self.img_cat))
 			os.system("cp %s/%s/catalogue_imaging.txt ." %(self.work_dir, self.img_cat))
 		
 		# Generate an RTS input file based on the template
-		self.logger.info("Generating RTS input files to accumulate weights for %s" %(target_id))
-		ncoarse = self._generate_RTS_input_files(target_id, "%s/%s" %(self.work_dir, target_id), "acc", "%s/%simg.in" %(self.work_dir, self.template_base), ra_hrs, dec_deg, "accumulate")
+		self.logger.info("Generating RTS input files to accumulate weights for %s" %(obs_id))
+		ncoarse = self._generate_RTS_input_files(obs_id, "acc", "%s/%simg.in" %(self.work_dir, self.template_base), ra_hrs, dec_deg, "accumulate")
 		# Generate the weights file
-		self.logger.info("Accumulate weights for %s" %(target_id))
+		self.logger.info("Accumulate weights for %s" %(obs_id))
 		os.system("aprun -N 1 -n %d %s rts_acc.in" %(ncoarse + 1, self.rts_bin))
 
-		os.system("mv rts_*.log %s/%s/%s" %(self.work_dir, dest_image_path, target_id))
-		os.system("cp *.dat %s/%s/%s" %(self.work_dir, dest_image_path, target_id))
-		self.logger.info("Finished accumulating weights for %s" %(target_id))
+		os.system("mv rts_*.log %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
+		os.system("cp *.dat %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
+		self.logger.info("Finished accumulating weights for %s" %(obs_id))
 		# Return to working directory
-		os.chdir("%s" %(self.work_dir))
+		self.return_home()
 
-	def uv_dump(self, target_id, dest_image_path, cal_id = None, ra_hrs = None, dec_deg = None):
-		self.logger.info("UV Dump for %s" %(target_id))
+	def uv_dump(self, obs_id, dest_image_path, cal_id = None, ra_hrs = None, dec_deg = None):
+		self.logger.info("UV Dump for %s" %(obs_id))
 		self.logger.info("Using calibration from %s" %(cal_id))
 
 		if ra_hrs != None and dec_deg != None:
 			self.logger.info("Using (%f, %f) as imaging centre" %(ra_hrs, dec_deg))
 		# Move to the target directory
-		self.logger.info("Cleaning up %s/%s" %(self.work_dir, target_id))
-		os.chdir("%s/%s" %(self.work_dir, target_id))
+		self.move_to_target(obs_id)
+		self.logger.info("Cleaning up %s/%s" %(self.work_dir, obs_id))
 		# Remove old files
 		os.system("rm -fr *.log 2*.fits *.btr uvdump*.fits uvbeam*.fits pee*.txt rest*.txt cor*.fits int*.fits")
 		# Move to final cal to see if there is anything there
 		if cal_id == None:
-			os.chdir("%s/%s" %(self.work_dir, target_id))
+			self.move_to_target(obs_id)
 			# Use calibration already in target
 		else:
-			# Use calibration from specified obsid
-			os.chdir("%s/%s" %(self.work_dir, cal_id))
-			if cal_id != target_id:
+			# Use calibration from specified obs_id
+			self.move_to_target(cal_id)
+			if cal_id != obs_id:
 				# Copy the calibration solutions to the target
-				self.logger.info("Copying calibration files from %s to %s" %(cal_id, target_id))
+				self.logger.info("Copying calibration files from %s to %s" %(cal_id, obs_id))
 				# copy across the calibration data ... unless we are imaging the calibrator.
-				os.system("cp *.dat %s/%s" %(self.work_dir, target_id))
+				os.system("cp *.dat %s/%s" %(self.work_dir, obs_id))
 
 		# Check if a calibration exists
 		if len(glob.glob("*.dat")) == 0:
 			self.logger.warning("No calibration data found!")
 			return
 
-		# Move to the target directory
-		os.chdir("%s/%s" %(self.work_dir, target_id))
+		self.move_to_target(obs_id)
 		# Generate the catalogue for imaging.
 		if self.img_cat == None:
-			if os.path.exists("%s_metafits_ppds.fits" %(target_id)) == True:
-				self.logger.info("Using %s_metafits_ppds.fits as input" %(target_id))
-				os.system("python /group/mwaops/CODE/bin/srclist_by_beam.py -x -m %s_metafits_ppds.fits -c %f -s %s/%s -n %s" %(target_id, self.cat_extent, self.cat_path, self.src_cat, self.img_srcs))
+			metafits_path = "%s/%s_metafits_ppds.fits" %(self.get_data_path(obs_id), obs_id)
+			if os.path.exists(metafits_path) == True:
+				self.logger.info("Using %s as input" %(metafits_path))
+				os.system("python /group/mwaops/CODE/bin/srclist_by_beam.py -x -m %s -c %f -s %s/%s -n %s" %(metafits_path, self.cat_extent, self.cat_path, self.src_cat, self.img_srcs))
 			else:
-				self.logger.error("Unable to find %s_metafits_ppds.fits to generate catalogue against!" %(target_id))
+				self.logger.error("Unable to find %s_metafits_ppds.fits to generate catalogue against!" %(obs_id))
 			os.system("mv *peel*.txt catalogue_imaging.txt")
 		else:
 			self.logger.info("Using catalogue from %s" %(self.img_cat))
 			os.system("cp %s/%s/catalogue_imaging.txt ." %(self.work_dir, self.img_cat))
 		
 		# Generate an RTS input file based on the template
-		self.logger.info("Generating RTS input files to accumulate weights for %s" %(target_id))
-		ncoarse = self._generate_RTS_input_files(target_id, "%s/%s" %(self.work_dir, target_id), "uv", "%s/%suv.in" %(self.work_dir, self.template_base), ra_hrs, dec_deg, "uv")
+		self.logger.info("Generating RTS input files to accumulate weights for %s" %(obs_id))
+		ncoarse = self._generate_RTS_input_files(obs_id, "uv", "%s/%suv.in" %(self.work_dir, self.template_base), ra_hrs, dec_deg, "uv")
 		# Generate the weights file
-		self.logger.info("UV Dump for %s" %(target_id))
+		self.logger.info("UV Dump for %s" %(obs_id))
 		os.system("aprun -N 1 -n %d %s rts_uv.in" %(ncoarse + 1, self.rts_bin))
 
-		os.system("mkdir -p %s/%s/%s" %(self.work_dir, dest_image_path, target_id))
-		os.system("mv rts_*.log %s/%s/%s" %(self.work_dir, dest_image_path, target_id))
-		os.system("cp *.dat %s/%s/%s" %(self.work_dir, dest_image_path, target_id))
-		os.system("mv uvdump*.uvfits %s/%s/%s" %(self.work_dir, dest_image_path, target_id))
-		self.logger.info("Finished dumping uv for %s" %(target_id))
+		os.system("mkdir -p %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
+		os.system("mv rts_*.log %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
+		os.system("cp *.dat %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
+		os.system("mv uvdump*.uvfits %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
+		self.logger.info("Finished dumping uv for %s" %(obs_id))
 		# Return to working directory
-		os.chdir("%s" %(self.work_dir))
+		self.return_home()
 
 # Function to call a JSON web service and return a dictionary:
 def getmeta(service='obs', params=None):
@@ -908,11 +950,11 @@ def get_obs_list(params):
 	return sublist
 
 def get_local_obs_list(omin = "0000000000", omax = "9999999999"):
-	obsids = glob.glob("[0-9]"*10)
-	obsids.sort()
-	return [obs for obs in obsids if obs >= omin and obs <= omax]
+	obs_ids = glob.glob("[0-9]"*10)
+	obs_ids.sort()
+	return [obs for obs in obs_ids if obs >= omin and obs <= omax]
 
-def get_obs_time(obsid):
-	timestr = getmeta(service="tconv", params={'gpssec':obsid})
+def get_obs_time(obs_id):
+	timestr = getmeta(service="tconv", params={'gpssec':obs_id})
 	return parser.parse(timestr)
 
