@@ -298,6 +298,8 @@ class MWAPipe:
 			return
 	
 		data_path = self.get_data_path(obs_id)
+		obs_path = "%s/%s" %(self.work_dir, obs_id)
+		
 		# Set the time.
 		self.logger.info("obs_id=%s" %(obs_id))
 		obs_time = ephem_utils.MWATime(gpstime = float(obs_id))
@@ -413,7 +415,7 @@ class MWAPipe:
 			if line.startswith('BaseFilename'):
 				new_line = "BaseFilename=%s/*_gpubox\n" %(data_path)
 				if self.use_flag == True:
-					new_line += "ImportCotterFlags=1\nImportCotterBasename=%s/%s\n\n" %(data_path, obs_id)
+					new_line += "ImportCotterFlags=1\nImportCotterBasename=%s\n\n" %(obs_path)
 				if self.use_meta == True:
 					new_line += "ReadMetafitsFile=1\nMetafitsFilename=%s/%s\n" %(data_path, obs_id)
 			if line.startswith('CorrDumpTime'):
