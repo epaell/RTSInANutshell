@@ -285,7 +285,7 @@ class MWAPipe:
 		
 	def move_to_data(self, obs_id = None):
 		data_path = self.get_data_path(obs_id)
-		assert (os.path.isfile(data_path) == True), "Data path does not exist: %s" %(data_path)
+		assert (os.path.exists(data_path) == True), "Data path does not exist: %s" %(data_path)
 		os.chdir(data_path)
 		
 	def return_home(self):
@@ -537,7 +537,8 @@ class MWAPipe:
 		os.system("rm -fr *.mwaf")
 		# Extract mwaf files from the zip file downloaded from the archive
 		zip_file = "%s/%s_flags.zip" %(data_path, obs_id)
-		assert (os.path.isfile(zip_file) == True), "Cotter flag zip file for obs_id %s does not exist. WARNING: not using Cotter flags." %(obs_id)
+		if os.path.isfile(zip_file) == False:
+			self.logger.warning("Cotter flag zip file for obs_id %s does not exist. WARNING: not using Cotter flags." %(obs_id))
 		os.system("unzip -o -j %s" %(zip_file))
 
 		# Read existing flagging information
@@ -553,7 +554,7 @@ class MWAPipe:
 		# Return to working directory
 		self.return_home()
 
-	def pair_reflag(self, obs_id1, target2, threshold):
+	def pair_reflag(self, obs_id1, obs_id2, threshold):
 		"""read flagging information for a pair of target obs_ids and completely flag channels that already
 			have excessive flagging. Flagging in both targets will be made consistent so that the same channels
 			are flagged in each obs_id.
@@ -577,7 +578,8 @@ class MWAPipe:
 		os.system("rm -fr *.mwaf")
 		# Extract mwaf files from the zip file downloaded from the archive
 		zip_file = "%s/%s_flags.zip" %(data_path, obs_id1)
-		assert (os.path.isfile(zip_file) == True), "Cotter flag zip file for obs_id %s does not exist. WARNING: not using Cotter flags." %(obs_id1)
+		if os.path.isfile(zip_file) == False:
+			self.logger.warning("Cotter flag zip file for obs_id %s does not exist. WARNING: not using Cotter flags." %(obs_id1))
 		os.system("unzip -o -j %s" %(zip_file))
 
 		# Read existing flagging information
@@ -595,7 +597,8 @@ class MWAPipe:
 		os.system("rm -fr *.mwaf")
 		# Extract mwaf files from the zip file downloaded from the archive
 		zip_file = "%s/%s_flags.zip" %(data_path, obs_id2)
-		assert (os.path.isfile(zip_file) == True), "Cotter flag zip file for obs_id %s does not exist. WARNING: not using Cotter flags." %(obs_id2)
+		if os.path.isfile(zip_file) == False:
+			self.logger.warning("Cotter flag zip file for obs_id %s does not exist. WARNING: not using Cotter flags." %(obs_id2))
 		os.system("unzip -o -j %s" %(zip_file))
 
 		# Read existing flagging information
@@ -617,7 +620,7 @@ class MWAPipe:
 		# Flag excessively flagged channels in the second target
 		nbad, ntotal = update_mwaf_data(obs_id2, flagged, threshold)
 		self.logger.info("Flagging %d channels out of %d" %(nbad, ntotal))
-		self.logger.info("Finished reflagging %s+%s" %(obs_id1, target2))
+		self.logger.info("Finished reflagging %s+%s" %(obs_id1, obs_id2))
 		# Return to working directory
 		self.return_home()
 
