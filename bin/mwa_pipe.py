@@ -166,23 +166,25 @@ def update_mwaf_data(obs_id, flagged, threshold):
 	return len(bad[1]), nchan * COARSE_CHANNELS
 
 def remove_pols(pols = ["XX", "YY", "XYim", "XYre"]):
+	for pol in pols:
+		os.system("find -name \"*%s.fits\" -type f -print0 | xargs -0 munlink" %(pol))
 	# Try to get a list of all of the instrumental XX images
-	flist = glob.glob("2*_*%s.fits" %(pols[0]))
-	while len(flist) > 0:
-		# Get the frequency of the first item in the list
-		freq0 = flist[0].split("_")[2]
-		# Find all time stamps available for that frequency (need to minimize the number of files being removed at any time)
-		flist = glob.glob("2*%s*%s.fits" %(freq0, pols[0]))
-		for fname in flist:
-			tindex = fname.split("_")[-1]
-			os.system("rm 2*%s" %(tindex))
-			os.system("rm 2*%s" %(tindex.replace(pols[0], pols[1])))
-			os.system("rm 2*%s" %(tindex.replace(pols[0], pols[2])))
-			os.system("rm 2*%s" %(tindex.replace(pols[0], pols[3])))
+#	flist = glob.glob("2*_*%s.fits" %(pols[0]))
+#	while len(flist) > 0:
+#		# Get the frequency of the first item in the list
+#		freq0 = flist[0].split("_")[2]
+#		# Find all time stamps available for that frequency (need to minimize the number of files being removed at any time)
+#		flist = glob.glob("2*%s*%s.fits" %(freq0, pols[0]))
+#		for fname in flist:
+#			tindex = fname.split("_")[-1]
+#			os.system("rm 2*%s" %(tindex))
+#			os.system("rm 2*%s" %(tindex.replace(pols[0], pols[1])))
+#			os.system("rm 2*%s" %(tindex.replace(pols[0], pols[2])))
+#			os.system("rm 2*%s" %(tindex.replace(pols[0], pols[3])))
 	# Remove any files
-	os.system("rm 2*%s.fits" %(pols[1]))
-	os.system("rm 2*%s.fits" %(pols[2]))
-	os.system("rm 2*%s.fits" %(pols[3]))
+#	os.system("rm 2*%s.fits" %(pols[1]))
+#	os.system("rm 2*%s.fits" %(pols[2]))
+#	os.system("rm 2*%s.fits" %(pols[3]))
 	return
 
 def move_images(pols, dest):
@@ -736,6 +738,7 @@ class MWAPipe:
 			metafits_path = "%s/%s_metafits_ppds.fits" %(self.get_data_path(obs_id), obs_id)
 			if os.path.exists(metafits_path) == True:
 				self.logger.info("Using %s as input" %(metafits_path))
+				self.logger.info("python /group/mwaops/CODE/bin/srclist_by_beam.py -x -m %s -c %f -s %s/%s -n %s" %(metafits_path, self.cat_extent, self.cat_path, self.src_cat, self.img_srcs))
 				os.system("python /group/mwaops/CODE/bin/srclist_by_beam.py -x -m %s -c %f -s %s/%s -n %s" %(metafits_path, self.cat_extent, self.cat_path, self.src_cat, self.img_srcs))
 			else:
 				self.logger.error("Unable to find %s_metafits_ppds.fits to generate catalogue against!" %(obs_id))
