@@ -17,12 +17,10 @@ import sys
 import glob
 import logging
 import time
-import ephem
 import numpy as np
+from astropy.io import fits
 import datetime
 import pytz
-from astropy.io import fits
-from mwapy import ephem_utils
 from dateutil import parser
 import json
 
@@ -295,6 +293,9 @@ class MWAPipe:
 		os.chdir(self.work_dir)
 		
 	def _generate_RTS_input_files(self, obs_id, basename, template, ra_hrs, dec_deg, mode = None):
+		import ephem
+		from mwapy import ephem_utils
+
 		if not (self.array == '32T' or self.array == '128T'):
 			self.logger.error("Array Parameter should be either '32T' or '128T'")
 			return
