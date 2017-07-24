@@ -7,6 +7,8 @@
 #   - Matplotlib
 #
 
+import os
+from optparse import OptionParser
 import sys, getopt, string, re
 import datetime
 from numpy import *
@@ -156,7 +158,13 @@ def checkbp(flagtiles, cc, plot_chan, plot_raw):
 		if fabs( val - 1.0 ) >= thresh:
 			flagtiles[tile-1] += 1
 
+parser = OptionParser()#create parser for program options
+parser.add_option("-o", "--obsid",type='string',action="store", dest="obs",help='list of obsids', default='default')
+options, args = parser.parse_args()
 
+
+if options.obs != 'default':
+    os.chdir(os.path.join(os.getcwd(),options.obs))
 plot_chan = 0
 plot_raw  = 0
 flagtiles = zeros((128))
@@ -175,5 +183,19 @@ if len(tile) == 0:
 	sys.exit(0)
 tile.sort()
 tile.reverse()
+flagged=[]#list of tiles to wirte to flagged_tiles.txt
 for n, t in tile:
 	print("Flag tile %d (%d bad bandpass entries)" %(t, n))
+	if n > 10: #make list of tiles with bad bandpasses to write to flagged_tiles.txt
+        	flagged.append(t)
+
+flagged.sort()
+#write flagged_tiles.txt
+flag_file = open('flagged_tiles.txt','w')
+for i in range (0,len(flagged)):
+    	flg='%d\n'%(flagged[i])
+    	flag_file.write(flg)
+flag_file.flush()
+flag_file.close
+print ('flag file written')
+
