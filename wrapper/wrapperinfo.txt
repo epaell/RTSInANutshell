@@ -1,0 +1,22 @@
+qlaunch.sh and launcher.py starts a wrapper for each obsid in the list
+the wrapper writes all the rts files needed and submits the load,calibrate and image jobs
+
+copy rtswrite.py and wrapper.py to ~/bin/  
+copy qlaunch and launcher.py into working directory 
+edit settings in launcher.py
+
+current settings able to be changed:
+fscrunch=1
+field_size=8.0
+obslist=['1165925976']
+img_cad= 96
+path='uvceti'
+weighting='robust'
+robustness=(-1)
+email='ianbrown@uwm.edu'
+oversample=5
+maxfreq=180
+
+then run command sbatch qlaunch.sh
+
+
