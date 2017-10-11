@@ -644,11 +644,12 @@ class MWAPipe:
 		self.logger.info("Finished fetching data for %s" %(obs_id))
 		self.return_home()
 
-	def fetch_metadata(self, obs_id):
+	def fetch_metadata(self, obs_id, max_bad_dipoles=2):
 		"""regenerate metadata files (rather than fetching from the archive) for the specified obs_id.
 
 		Args:
 			obs_id : the obs_id for which metadata will be generated.
+			max_bad_dipoles : the maximum number of bad dipoles that will be accepted before a tile is flagged.
 
 		Returns:
 	
@@ -658,7 +659,7 @@ class MWAPipe:
 		self.logger.info("Fetch metadata for %s" %(obs_id))
 		# Move to the target directory
 		self.move_to_data(obs_id)
-		os.system("wget -O %s_metafits_ppds.fits http://mwa-metadata01.pawsey.org.au/metadata/fits?obs_id=%s" %(obs_id, obs_id))
+		os.system("wget -O %s_metafits_ppds.fits 'http://mwa-metadata01.pawsey.org.au/metadata/fits?obs_id=%s&&min_bad_dipoles=%d'" %(obs_id, obs_id, max_bad_dipoles))
 		# Return to working directory
 		self.return_home()
 	
