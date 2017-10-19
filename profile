@@ -55,8 +55,8 @@ then
 	module load psycopg2
 	module load healpy/1.9.1
 	module load cudatoolkit
-        module load gsl
-        module load boost
+	module load gsl
+	module load boost
 	module load cmake
 	module load cfitsio
 	module load wcslib

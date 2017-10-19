@@ -13,16 +13,15 @@ export RTSBIN=$RTSDIR/bin
 # set path to path where global sky models can be found
 export RTS_CAT_PATH=$HOME/catalog/
 # set up library paths
-export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$MWA_OPS_DIR/CODE/lib"
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$CRAY_LD_LIBRARY_PATH"
 export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${MIRLIB}"
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$MWA_SCI_DIR/code/lib"
+export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$MWA_OPS_DIR/CODE/lib"
 # set up binary paths
-export PATH="${PATH}:${MWA_OPS_DIR}/CODE/bin:${RTSBIN}:${MIRBIN}"
 export PATH="${PATH}:${MWA_SCI_DIR}/code/MWA_Tools/scripts"
-export PATH=${PATH}:${MWA_SCI_DIR}/code/bin
-#
-export PYTHONPATH=${PYTHONPATH}:$MWA_SCI_DIR/code/MWA_Tools/
-export PYTHONPATH=${PYTHONPATH}:$MWA_SCI_DIR/code/MWA_Tools/scripts
-export PYTHONPATH=${PYTHONPATH}:$MWA_SCI_DIR/code/MWA_Tools/mwapy
-export PYTHONPATH=${PYTHONPATH}:$MWA_SCI_DIR/code/MWA_Tools/configs
+export PATH="${PATH}:${MWA_SCI_DIR}/code/bin"
+export PATH="${PATH}:$RTSBIN"
+export PATH="${PATH}:${MIRBIN}"
+# set up Python paths
+export PYTHONPATH=${PYTHONPATH}:$MWA_SCI_DIR/code/lib/python2.6/site-packages/
 export PYTHONPATH=${PYTHONPATH}:$HOME/bin
