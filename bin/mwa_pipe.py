@@ -161,7 +161,7 @@ def update_mwaf_data(obs_id, flagged, threshold):
 				n_reflag += 1
 
 		hdu.close()
-	return len(bad[1]), nchan * COARSE_CHANNELS
+	return base, len(bad[1]), nchan * COARSE_CHANNELS
 
 def remove_pols(pols = ["XX", "YY", "XYim", "XYre"]):
 	for pol in pols:
@@ -242,6 +242,9 @@ class MWAPipe:
 		self.long_taper = None
 		self.min_baseline = None
 		self.max_baseline = None
+		self.min_cal_baseline = 20.0
+		self.max_cal_baseline = None
+		self.min_cal_taper = None
 		self.start_at = 0
 		self.end_at = 0
 		self.use_flag = True
@@ -401,7 +404,12 @@ class MWAPipe:
 				outFile.write("imgBaselineMin=%f\n" %(self.min_baseline))
 			if self.max_baseline != None:
 				outFile.write("imgBaselineMax=%f\n" %(self.max_baseline))
-
+		if self.min_cal_baseline != None:
+			outFile.write("calBaselineMin=%f\n" %(self.min_cal_baseline))
+		if self.max_cal_baseline != None:
+			outFile.write("calBaselineMax=%f\n" %(self.max_cal_baseline))
+		if self.min_cal_taper != None:
+			outFile.write("calShortBaselineTaper=%f\n" %(self.min_cal_taper))
 		self.logger.info("Imaging cadence = %f" %(imaging_cadence))
 		scan_time = header["N_SCANS"] * header["INT_TIME"] - header["INT_TIME"] * 4
 		self.logger.info("scan_time = %d" %(scan_time))
@@ -551,7 +559,8 @@ class MWAPipe:
 			self.logger.error(e.args[0])
 			return
 		# Flag excessively flagged channels
-		nbad, ntotal = update_mwaf_data(obs_id, flagged, threshold)
+		median, nbad, ntotal = update_mwaf_data(obs_id, flagged, threshold)
+		self.logger.info("Median = %f" %(median))
 		self.logger.info("Flagging %d channels out of %d" %(nbad, ntotal))
 		self.logger.info("Finished reflagging %s" %(obs_id))
 		# Return to working directory
@@ -649,7 +658,6 @@ class MWAPipe:
 
 		Args:
 			obs_id : the obs_id for which metadata will be generated.
-			max_bad_dipoles : the maximum number of bad dipoles that will be accepted before a tile is flagged.
 
 		Returns:
 	
