@@ -68,14 +68,6 @@ ObservationPointCentreDec=-25.93
 ObservationImageCentreRA=
 ObservationImageCentreDec=
 
-// --- weighting stuff --- //
-
-calBaselineMin=20.0
-calShortBaselineTaper=50.0
-
-//imgLongBaselineTaper = 3000.0
-imgBaselineMin = 100.0
-
 // --- calibration stuff --- //
 
 DoCalibration=

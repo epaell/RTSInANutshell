@@ -244,7 +244,7 @@ class MWAPipe:
 		self.max_baseline = None
 		self.min_cal_baseline = 20.0
 		self.max_cal_baseline = None
-		self.min_cal_taper = None
+		self.min_cal_taper = 50.0
 		self.start_at = 0
 		self.end_at = 0
 		self.use_flag = True
