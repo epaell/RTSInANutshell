@@ -8,7 +8,5 @@
 #SBATCH --account=mwasci
 #SBATCH --export=NONE
 #
-module load mpifileutils
-#
 rm -f load.log
-mpirun -n 1 ./load.py
+./load.py

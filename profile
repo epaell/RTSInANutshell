@@ -33,12 +33,39 @@ then
 fi
 
 module load python
-module load lapack
-module load pawseytools/1.11
-module load astropy/1.1
+module load pawseytools
+module load astropy
 
 if [[ "$PAWSEY_CLUSTER" == "galaxy" ]]
 then
+	module load lapack
+	module unload gcc
+	# use gcc 4.8 for CUDA/RTS, use version 4.9 for boost
+	module load gcc/4.8.2
+	module load cray-libsci
+	module load linecache2
+	module load traceback2
+	module load unittest2
+	module load h5py
+	module load numpy/1.10.1
+	module load python-dateutil/2.4.2
+	module load pytz/2015.7
+	module load matplotlib/1.5.0
+	module load pyephem
+	module load psycopg2
+	module load healpy/1.9.1
+	module load cudatoolkit
+	module load gsl
+	module load boost
+	module load cmake
+	module load cfitsio
+	module load wcslib
+	module load scipy
+	module load readline
+	module use /group/mwasci/software/cle52up04/modulefiles
+	module load casacore/2.3.0
+elif [[ "$PAWSEY_CLUSTER" == "magnus" ]]
+	module load lapack
 	module unload gcc
 	# use gcc 4.8 for CUDA/RTS, use version 4.9 for boost
 	module load gcc/4.8.2
