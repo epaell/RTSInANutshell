@@ -65,6 +65,7 @@ then
 	module use /group/mwasci/software/cle52up04/modulefiles
 	module load casacore/2.3.0
 elif [[ "$PAWSEY_CLUSTER" == "magnus" ]]
+then
 	module load lapack
 	module load astropy
 	module unload gcc
