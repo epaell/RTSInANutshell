@@ -34,11 +34,11 @@ fi
 
 module load python
 module load pawseytools
-module load astropy
 
 if [[ "$PAWSEY_CLUSTER" == "galaxy" ]]
 then
 	module load lapack
+	module load astropy
 	module unload gcc
 	# use gcc 4.8 for CUDA/RTS, use version 4.9 for boost
 	module load gcc/4.8.2
@@ -66,6 +66,7 @@ then
 	module load casacore/2.3.0
 elif [[ "$PAWSEY_CLUSTER" == "magnus" ]]
 	module load lapack
+	module load astropy
 	module unload gcc
 	# use gcc 4.8 for CUDA/RTS, use version 4.9 for boost
 	module load gcc/4.8.2
@@ -92,6 +93,7 @@ elif [[ "$PAWSEY_CLUSTER" == "magnus" ]]
 	module use /group/mwasci/software/cle52up04/modulefiles
 	module load casacore/2.3.0
 else
+	module load astropy
 	module load matplotlib
 	module load numpy
 	module load setuptools
