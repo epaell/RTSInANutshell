@@ -32,19 +32,27 @@ then
     module swap PrgEnv-cray PrgEnv-gnu
 fi
 
-module use /group/mwa/software/modulefiles
-module load MWA_Tools/mwa-sci
-module load RTS
 
 if [[ "$PAWSEY_CLUSTER" == "galaxy" ]]
 then
+   module use /group/mwa/software/modulefiles
+   module load MWA_Tools/mwa-sci
+   module load RTS
    module load cudatoolkit
    module load cmake
+   module load healpix
 elif [[ "$PAWSEY_CLUSTER" == "magnus" ]]
 then
+   module use /group/mwa/software/modulefiles
+   module load MWA_Tools/mwa-sci
+   module load RTS
    module load cudatoolkit
    module load cmake
+   module load healpix
 else
-	module load astropy
+   module load pytz
+   module load numpy
+   module load astropy
+   module load dateutil
 fi
 
