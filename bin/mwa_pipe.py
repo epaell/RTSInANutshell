@@ -244,7 +244,7 @@ class MWAPipe:
 		self.max_baseline = None
 		self.min_cal_baseline = 20.0
 		self.max_cal_baseline = None
-		self.min_cal_taper = 50.0
+		self.min_cal_taper = None
 		self.start_at = 0
 		self.end_at = 0
 		self.use_flag = True
@@ -701,7 +701,7 @@ class MWAPipe:
 
 		# Do the calibration
 		self.logger.info("Performing calibration for %s" %(obs_id))
-		os.system("aprun -N 1 -n %d %s rts_cal.in" %(ncoarse + 1, self.rts_bin))
+		os.system("srun --export=ALL --ntasks=%d --ntasks-per-node=1 %s rts_cal.in" %(ncoarse + 1, self.rts_bin))
 			
 		self.logger.info("Finished calibrating %s" %(obs_id))
 		# Return to working directory
@@ -762,8 +762,9 @@ class MWAPipe:
 		ncoarse = self._generate_RTS_input_files(obs_id, "img", "%s/%simg.in" %(self.work_dir, self.template_base), ra_hrs, dec_deg, "image")
 		# Do the imaging
 		self.logger.info("Imaging %s" %(obs_id))
-		os.system("aprun -N 1 -n %d %s rts_img.in" %(ncoarse + 1, self.rts_bin))
+		os.system("srun --export=ALL --ntasks=%d --ntasks-per-node=1 %s rts_img.in" %(ncoarse + 1, self.rts_bin))
 		if self.remove_inst_pols == True:
+			self.logger.info("Removing instrumental polarisation images")
 			remove_pols()
 		self.logger.info("Moving image files to destination path: %s" %(dest_image_path))
 		os.system("mkdir -p %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
@@ -826,7 +827,7 @@ class MWAPipe:
 		ncoarse = self._generate_RTS_input_files(obs_id, "acc", "%s/%simg.in" %(self.work_dir, self.template_base), ra_hrs, dec_deg, "accumulate")
 		# Generate the weights file
 		self.logger.info("Accumulate weights for %s" %(obs_id))
-		os.system("aprun -N 1 -n %d %s rts_acc.in" %(ncoarse + 1, self.rts_bin))
+		os.system("srun --export=ALL --ntasks=%d --ntasks-per-node=1 %s rts_acc.in" %(ncoarse + 1, self.rts_bin))
 
 		os.system("mv rts_*.log %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
 		os.system("cp *.dat %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
@@ -882,7 +883,7 @@ class MWAPipe:
 		ncoarse = self._generate_RTS_input_files(obs_id, "uv", "%s/%suv.in" %(self.work_dir, self.template_base), ra_hrs, dec_deg, "uv")
 		# Generate the weights file
 		self.logger.info("UV Dump for %s" %(obs_id))
-		os.system("aprun -N 1 -n %d %s rts_uv.in" %(ncoarse + 1, self.rts_bin))
+		os.system("srun --export=ALL --ntasks=%d --ntasks-per-node=1 %s rts_uv.in" %(ncoarse + 1, self.rts_bin))
 
 		os.system("mkdir -p %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
 		os.system("mv rts_*.log %s/%s/%s" %(self.work_dir, dest_image_path, obs_id))
