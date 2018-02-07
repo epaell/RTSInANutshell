@@ -5,5 +5,7 @@
 #SBATCH --partition=gpuq
 #SBATCH --account=mwasci
 #SBATCH --export=NONE
+#SBATCH --mem=30000
+#SBATCH --gres=gpu:1
 rm -f cal.log
 ./cal.py
