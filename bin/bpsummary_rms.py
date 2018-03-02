@@ -11,7 +11,7 @@ import sys, getopt, string, re
 import datetime
 from numpy import *
 
-def checkbp(flagtiles, cc, plot_chan, plot_raw):
+def checkbp(flagtiles, cc):
 	sel_offset = 1
 	bp_file = "BandpassCalibration_node%03d.dat" %(cc)
 	print("Reading %s" %(bp_file))
@@ -20,7 +20,7 @@ def checkbp(flagtiles, cc, plot_chan, plot_raw):
 	try:
 		fid = open(bp_file, 'r')
 	except IOError:
-		print("Can't open file %s for reading." %(bp_file))
+		print("Warning: Can't open file %s for reading." %(bp_file))
 		return
 
 	# read the file into an array
@@ -30,11 +30,16 @@ def checkbp(flagtiles, cc, plot_chan, plot_raw):
 
 	# check that something was read in
 	if len(lines)==0:
-		print("Error reading bandpass file: no lines read from the file.")
+		print("Error: No lines read from the file.")
 		return
 	elif len(lines)%8 != 1:
-		print("Error reading bandpass file: number of lines should be 1 plus a multiple of 8.")
+		print("Error: Number of lines should be 1 plus a multiple of 8.")
 		return
+
+	for lineIndex in range(1, len(lines), 8):  # get 0, 8, 16, ...
+		if lines[lineIndex].find("nan") != -1:
+			print("Warning: bandpass file contains 'nan' solutions")
+			return
 
 	# initialise the body list
 	PX_lsq = []
@@ -56,12 +61,9 @@ def checkbp(flagtiles, cc, plot_chan, plot_raw):
 	for k in range(0,N_ch):
 		freq[k] = tmp2[k]
 
-	if plot_raw:
-		ch = range(0,N_ch)
-	else:
-		ch = zeros(N_ch)
-		for k in range(0,N_ch):
-			ch[k] = freq[k]/0.04
+	ch = zeros(N_ch)
+	for k in range(0,N_ch):
+		ch[k] = freq[k]/0.04
 
 	freq_idx = argsort(freq)
 
@@ -115,9 +117,6 @@ def checkbp(flagtiles, cc, plot_chan, plot_raw):
 
 	# --------------------------------------------------------------------------------- #
 
-	if plot_chan==1:
-		freq=ch
-
 	band_start = freq[0]
 	quart_bw = ( freq[-1] - band_start ) / 4.0
 
@@ -136,11 +135,10 @@ def checkbp(flagtiles, cc, plot_chan, plot_raw):
 		flagtiles[tile-1] += max([valPX, valPY, valQX, valQY])
 
 
-plot_chan = 0
-plot_raw  = 0
 flagtiles = zeros((128), dtype=float)
 for cc in range(24):
-	checkbp(flagtiles, cc + 1, plot_chan, plot_raw)
+	checkbp(flagtiles, cc + 1)
+
 print("Summary:")
 tile = []
 #nflag = []
