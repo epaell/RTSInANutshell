@@ -12,7 +12,6 @@ import datetime
 from numpy import *
 
 def checkbp(flagtiles, cc):
-	sel_offset = 1
 	bp_file = "BandpassCalibration_node%03d.dat" %(cc)
 	print("Reading %s" %(bp_file))
 	
@@ -67,7 +66,7 @@ def checkbp(flagtiles, cc):
 
 	freq_idx = argsort(freq)
 
-	chan_sel = sel_offset + 2*array(freq_idx)
+	chan_sel = 1 + 2*array(freq_idx)
 
 	for lineIndex in range(1, len(lines), 8):  # get 0, 8, 16, ...
 		tmp = lines[lineIndex+0].split(",")
@@ -121,9 +120,6 @@ def checkbp(flagtiles, cc):
 	quart_bw = ( freq[-1] - band_start ) / 4.0
 
 	# --------------------------------------------------------------------------------- #
-
-	if sel_offset == 1:
-		thresh = 0.35
 
 	tilerms = []
 	for ant in range(0, N_ant):
